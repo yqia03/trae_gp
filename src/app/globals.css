@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@theme {
+  --color-canvas: #100904;
+  --color-surface: #382416;
+  --color-surface2: #2a1a0f;
+  --color-cream: #FFEDD7;
+  --color-line: #40372E;
+  --color-secondary: #C9B8A5;
+  --color-borderctl: #8D7862;
+  --color-accent: #DC5000;
+  --color-accenttext: #FFAD74;
+  --color-success: #C4D7A7;
+  --color-danger: #FFB4A8;
+}
+
+html, body {
+  background: var(--color-canvas);
+  color: var(--color-cream);
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+h1, h2, .serif {
+  font-family: "Songti SC", "Noto Serif SC", serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-cream);
+  outline-offset: 2px;
+}
+
+input[type="number"]::-webkit-inner-spin-button {
+  opacity: 1;
+}

@@ -1,0 +1,205 @@
+{
+  "schema_version": "1.0",
+  "product_name": "就地取材",
+  "data_kind": "explicit_fixed_demo_fixture",
+  "status": "prepared_example_not_runtime_verified",
+  "disclosure": "这是人工编排的固定演示样例，配图为 AI 生成图，并非真实拍摄照片；本数据不是 AI 对图片的实际识别结果。重量、数量、用品和锅具的确认状态仅为样例预置；真实使用时需由用户核对确认。",
+  "image_verification": "主代理已在生成后目视核对两张图的可见物件及数量，与下列清单一致。此检查不确认克数、尺寸、材质、新鲜度、可食用性或物件实际状态，也不代表运行过识别接口。",
+  "source_images": [
+    { "id": "ingredients-image", "path": "assets/demo/ingredients-input.png", "origin": "ai_generated_not_camera_photo", "verification_status": "visible_items_and_counts_checked_by_main_agent", "verified_visible_contents": ["2 个番茄", "2 个鸡蛋", "1 根西葫芦", "4 个白蘑菇", "1 小碗生米"] },
+    { "id": "objects-image", "path": "assets/demo/objects-input.png", "origin": "ai_generated_not_camera_photo", "verification_status": "visible_items_and_counts_checked_by_main_agent", "verified_visible_contents": ["1 个空无盖罐（外观为玻璃罐）", "1 个空无盖鞋盒", "1 块布（呈米色棉布外观）"] }
+  ],
+  "display_rules": [
+    "固定样例、真实模型结果和用户手动输入分别标记来源，不用同一成功提示混淆来源。",
+    "图片仅提供候选名称；重量、材质、尺寸、新鲜度及是否可食用不能仅凭照片确定。",
+    "数量及克数允许编辑；已确认的输入变更后，旧结果标记为待更新，不能继续声称其资源账本有效。",
+    "真实请求失败时，先显示失败并允许重试或明确切换固定样例；不自动伪装成真实成功。",
+    "固定样例仅适用于本文件的资源与约束。加载样例须同时展示对应预置输入，不能套用到任意上传图片。"
+  ],
+  "dinner": {
+    "id": "dinner-two-people-30min",
+    "title": "两人份番茄炒蛋、清炒西葫芦蘑菇与白米饭",
+    "input_image_id": "ingredients-image",
+    "confirmation_scope": "fixed_fixture_only_reconfirm_in_real_use",
+    "request": { "people": 2, "time_limit_minutes": 30, "menu_structure": { "staple_dishes": 1, "side_dishes": 2 }, "intent": "优先用现有食材，不增加未确认食材" },
+    "quantity_policy": "以下克数为人工设定、需用户确认的样例分量，不从图片估算；鸡蛋按个分配。160g 生米和 30 分钟只约束本次固定样例，不是全局份量门槛、营养标准或所有菜单的时间上限。真实模式按用户确认的人数、分量、食材与时间重新规划，不应硬编码两人必须有 160g 米；本菜单不构成营养充分性承诺。",
+    "confirmed_ingredients": [
+      { "id": "tomato", "name": "番茄", "count": 2, "count_unit": "个", "available_quantity": 300, "allocation_unit": "g", "quantity_source": "manual_sample_preset", "confirmation_status": "confirmed_in_fixture" },
+      { "id": "egg", "name": "鸡蛋", "available_quantity": 2, "allocation_unit": "个", "quantity_source": "manual_sample_preset", "confirmation_status": "confirmed_in_fixture" },
+      { "id": "zucchini", "name": "西葫芦", "count": 1, "count_unit": "根", "available_quantity": 200, "allocation_unit": "g", "quantity_source": "manual_sample_preset", "confirmation_status": "confirmed_in_fixture" },
+      { "id": "mushroom", "name": "白蘑菇", "count": 4, "count_unit": "个", "available_quantity": 80, "allocation_unit": "g", "quantity_source": "manual_sample_preset", "confirmation_status": "confirmed_in_fixture" },
+      { "id": "rice", "name": "生白米", "available_quantity": 160, "allocation_unit": "g", "quantity_source": "manual_sample_preset", "confirmation_status": "confirmed_in_fixture", "note": "小碗只是容器；米种与 160g 分量均须用户确认。" }
+    ],
+    "confirmed_basics": {
+      "confirmation_status": "confirmed_in_fixture",
+      "disclosure": "这些用品并非照片中识别到，而是固定样例中单独预置为已确认；真实流程逐项由用户确认。",
+      "consumables": [
+        { "id": "oil", "name": "食用油", "available_quantity": 20, "allocation_unit": "ml" },
+        { "id": "salt", "name": "食盐", "available_quantity": 3, "allocation_unit": "g" },
+        { "id": "cooking-water", "name": "可饮用烹饪用水", "available_quantity": 500, "allocation_unit": "ml" }
+      ],
+      "utilities": [
+        { "name": "清洗用水", "availability": "足量", "note": "用于淘米、洗菜及清洗厨具；不计入已量取的 500ml 烹饪用水。" },
+        { "name": "灶具", "availability": "两个可同时使用的炉头" }
+      ],
+      "equipment": ["带盖煮饭锅", "炒锅", "锅铲", "量杯或厨房秤", "刀与砧板", "打蛋碗", "盛菜盘与饭碗"],
+      "not_assumed_available": ["葱", "姜", "蒜", "酱油", "蚝油", "黄油", "糖", "淀粉"]
+    },
+    "feasibility": {
+      "status": "conditional_example",
+      "estimated_total_minutes": 30,
+      "estimate_not_tested": true,
+      "required_confirmations": [
+        "用户核对食材身份、分量和状态，并告知需避开的食材；图片不能证明食材新鲜或可食用。",
+        "这款生白米及带盖锅适合约 2 分钟准备、4 分钟煮沸、14 分钟小火、7 分钟焖饭的流程；具体以米的包装说明及实际熟度为准。",
+        "两个炉头及两口锅可并行使用，操作者可在米饭烹饪时准备和炒菜。"
+      ],
+      "if_conditions_fail": "明确说明当前输入不能保证在 30 分钟内完成本菜单，提供延长时间、调整人数或用户确认其他可用主食等选择；不虚构食材或把未煮熟的米算作完成。"
+    },
+    "menu": [
+      {
+        "id": "plain-rice",
+        "role": "staple",
+        "name": "白米饭",
+        "servings": 2,
+        "allocations": [{ "resource_id": "rice", "quantity": 160, "unit": "g" }, { "resource_id": "cooking-water", "quantity": 240, "unit": "ml" }],
+        "steps": [
+          "量取用户已确认的 160g 生白米，淘洗并沥水，放入带盖锅；另量取 240ml 烹饪用水加入。",
+          "按样例已确认的米种与锅具流程，先加热至沸腾，转小火盖盖煮，再关火焖饭；估时分别为 4、14、7 分钟。",
+          "检查米粒已熟、没有明显硬芯，再拨松分成两碗。如未熟，继续完成烹饪并同步更新预计完成时间，不能坚持 30 分钟标签。"
+        ]
+      },
+      {
+        "id": "tomato-eggs",
+        "role": "side",
+        "name": "番茄炒蛋",
+        "servings": 2,
+        "allocations": [{ "resource_id": "tomato", "quantity": 300, "unit": "g" }, { "resource_id": "egg", "quantity": 2, "unit": "个" }, { "resource_id": "oil", "quantity": 10, "unit": "ml" }, { "resource_id": "salt", "quantity": 1, "unit": "g" }],
+        "steps": [
+          "番茄洗净去蒂切块；两枚鸡蛋打入碗中搅匀，避免蛋壳混入。",
+          "炒锅加入本菜分配的 10ml 油，用其中约一半炒蛋至凝固后盛出。",
+          "锅中加入余下的油，放番茄炒至出汁变软，加入本菜分配的 1g 盐。",
+          "倒回炒蛋拌炒，使鸡蛋熟透、整体热透后装盘。本菜不额外添加未确认的糖、酱油或葱姜。"
+        ]
+      },
+      {
+        "id": "zucchini-mushrooms",
+        "role": "side",
+        "name": "清炒西葫芦蘑菇",
+        "servings": 2,
+        "allocations": [{ "resource_id": "zucchini", "quantity": 200, "unit": "g" }, { "resource_id": "mushroom", "quantity": 80, "unit": "g" }, { "resource_id": "oil", "quantity": 8, "unit": "ml" }, { "resource_id": "salt", "quantity": 1, "unit": "g" }],
+        "steps": [
+          "西葫芦和蘑菇清洗后切薄片；本菜使用全部已分配的 200g 西葫芦和 80g 蘑菇。",
+          "番茄炒蛋装盘后清理炒锅，加入本菜分配的 8ml 油，先放蘑菇翻炒至变软。",
+          "加入西葫芦继续翻炒至熟，再加入 1g 盐调味后装盘；若火力或厚度使烹饪变慢，按实际熟度延长，不以计时结束替代熟度检查。"
+        ]
+      }
+    ],
+    "parallel_timeline": [
+      { "minutes": "0–2", "action": "核对已确认清单，量取并淘洗白米，准备下锅。" },
+      { "minutes": "2–6", "action": "第一炉头加热米和水；同时清洗蔬菜，沸腾时及时转小火。" },
+      { "minutes": "6–8", "action": "第一炉头小火煮饭；切蔬菜、打蛋并量取两道菜各自的油盐。" },
+      { "minutes": "8–16", "action": "第二炉头完成番茄炒蛋并装盘；第一炉头继续煮饭。" },
+      { "minutes": "16–25", "action": "第二炉头完成清炒西葫芦蘑菇；约第 20 分钟关闭第一炉头开始焖饭。" },
+      { "minutes": "25–30", "action": "检查菜和米饭实际熟度，分装与摆盘；时间表为估计，未通过实际烹饪计时验证。" }
+    ],
+    "resource_ledger": [
+      { "resource_id": "tomato", "available": 300, "allocated": 300, "remaining": 0, "unit": "g" },
+      { "resource_id": "egg", "available": 2, "allocated": 2, "remaining": 0, "unit": "个" },
+      { "resource_id": "zucchini", "available": 200, "allocated": 200, "remaining": 0, "unit": "g" },
+      { "resource_id": "mushroom", "available": 80, "allocated": 80, "remaining": 0, "unit": "g" },
+      { "resource_id": "rice", "available": 160, "allocated": 160, "remaining": 0, "unit": "g" },
+      { "resource_id": "oil", "available": 20, "allocated": 18, "remaining": 2, "unit": "ml" },
+      { "resource_id": "salt", "available": 3, "allocated": 2, "remaining": 1, "unit": "g" },
+      { "resource_id": "cooking-water", "available": 500, "allocated": 240, "remaining": 260, "unit": "ml" }
+    ],
+    "substitution": {
+      "title": "没有蚝油，就做清炒版",
+      "missing_item": "蚝油（未确认拥有，不计入可用资源）",
+      "selected_change": "采用现有食盐调味的清炒版本；1g 盐已计入西葫芦蘑菇的分配，不能再次扣减。",
+      "tradeoff": "成菜更清淡，与蚝油版风味不同；这是调整做法，不是声称食盐等同蚝油。",
+      "additional_purchase_required_for_this_example": []
+    },
+    "insufficient_input_example": {
+      "change": { "resource_id": "rice", "new_available_quantity": 40, "unit": "g" },
+      "expected_behavior": "旧菜单立刻标记待更新；提示 40g 生米无法满足当前样例已约定的 160g 主食用量。这只说明原分配不再成立，不代表所有两人餐都必须有 160g 米。让用户选择补充已确认主食、调整人数或接受新的分量方案，不假称原菜单仍成立。"
+    }
+  },
+  "objects": {
+    "id": "objects-second-life",
+    "title": "三件闲置物，两种备选去向",
+    "input_image_id": "objects-image",
+    "confirmation_scope": "fixed_fixture_only_reconfirm_in_real_use",
+    "confirmed_resources": [
+      { "id": "glass-jar", "name": "空无盖玻璃罐", "available_quantity": 1, "unit": "个", "confirmed_details": "罐体干净、干燥、无裂纹或缺口，平底可稳定放置；这些性质由用户检查，不从图片判断。" },
+      { "id": "shoe-box", "name": "无盖鞋盒", "available_quantity": 1, "unit": "个", "confirmed_details": "干燥完整；样例尺寸约 32×20×12cm，由用户确认，不从图片推断。" },
+      { "id": "cotton-cloth", "name": "米色棉布", "available_quantity": 1, "unit": "块", "confirmed_details": "干净干燥；样例尺寸至少约 50×50cm，足以覆盖盒底，由用户确认。" }
+    ],
+    "confirmed_basics": ["平稳干燥的桌面", "可用的自然光或现有室内光线", "拍摄方案使用操作者已有手机"],
+    "choice_rule": "以下是互斥备选，用户一次只选择一个方案。资源占用只在选定方案内核算，不能将两方案同时标成已完成。所用旧物可拆解恢复后重新选择。",
+    "plans": [
+      {
+        "id": "entry-organizer",
+        "name": "玄关随手收纳台",
+        "benefit": "把盒子变成集中放置随身小物的托盘，用玻璃罐提供竖向收纳位。",
+        "estimated_minutes": 8,
+        "allocations": [{ "resource_id": "shoe-box", "quantity": 1, "unit": "个", "role": "整体收纳托盘" }, { "resource_id": "cotton-cloth", "quantity": 1, "unit": "块", "role": "连续的一块盒底衬布" }, { "resource_id": "glass-jar", "quantity": 1, "unit": "个", "role": "同一托盘内的竖向收纳容器" }],
+        "steps": [
+          "检查鞋盒干燥完整、玻璃罐没有裂纹或缺口，将鞋盒开口向上放在稳定桌面。",
+          "把整块棉布折到适合盒底的大小，平整铺入鞋盒；不裁剪，也不把同一块布重复当作另一份材料。",
+          "将玻璃罐放在盒内一角，确保罐底处布面平整、罐体不晃动；不稳定时重新折平或调整位置。",
+          "用玻璃罐收纳已有的笔等轻小非食品用品，旁边盒面放已有钥匙等小物。小物是可选的使用示例，不是制作所需新增材料。"
+        ],
+        "substitution": { "missing_item": "胶水或胶带", "selected_change": "通过盒壁容纳、整块衬布平铺和稳定放置实现免粘合组合。", "tradeoff": "这是桌面静置收纳，不适合拎起晃动或作为携带箱。" },
+        "completion_checks": ["同一个盒内只使用一只罐和一整块布。", "罐体稳定、布未遮挡使用，所有容器仅用于非食品小物。", "不需要玻璃切割、钻孔、加热或电器改造。"],
+        "resource_ledger": [{ "resource_id": "glass-jar", "available": 1, "allocated": 1, "remaining": 0, "unit": "个" }, { "resource_id": "shoe-box", "available": 1, "allocated": 1, "remaining": 0, "unit": "个" }, { "resource_id": "cotton-cloth", "available": 1, "allocated": 1, "remaining": 0, "unit": "块" }]
+      },
+      {
+        "id": "small-photo-stage",
+        "name": "桌面小物拍照台",
+        "benefit": "用鞋盒提供简洁拍摄区域，用棉布遮住杂乱背景，适合拍摄已有小物。",
+        "estimated_minutes": 6,
+        "allocations": [{ "resource_id": "shoe-box", "quantity": 1, "unit": "个", "role": "拍摄区域的底座" }, { "resource_id": "cotton-cloth", "quantity": 1, "unit": "块", "role": "完整平铺的拍摄背景" }],
+        "steps": [
+          "将干燥完整的鞋盒开口向下放在稳定桌面，确认盒底能平稳支撑要拍摄的轻小物品。",
+          "把整块棉布平铺在朝上的盒底，余布自然垂下；将主要拍摄区域的褶皱理平，不剪裁或粘贴。",
+          "在靠近现有光线的位置摆好底座，放入操作者已有的轻小物品，并用已有手机从上方或斜上方取景。",
+          "调整角度，让画面主要包含布面和物品，拍一张照片检查背景是否整洁。玻璃罐本方案不用，保留为未占用资源。"
+        ],
+        "substitution": { "missing_item": "专用摄影背景板和固定夹", "selected_change": "用现有棉布平铺覆盖鞋盒，靠平面支撑完成取景。", "tradeoff": "适合轻小物体的桌面拍摄，背景纹理可见，不保证专业棚拍效果。" },
+        "completion_checks": ["只占用一个鞋盒和一块棉布，玻璃罐仍可用。", "底座稳定，不放重物或食品，不制作需要电源的灯具。", "已有手机能够拍到背景整洁的小物照片。"],
+        "resource_ledger": [{ "resource_id": "glass-jar", "available": 1, "allocated": 0, "remaining": 1, "unit": "个" }, { "resource_id": "shoe-box", "available": 1, "allocated": 1, "remaining": 0, "unit": "个" }, { "resource_id": "cotton-cloth", "available": 1, "allocated": 1, "remaining": 0, "unit": "块" }]
+      }
+    ]
+  },
+  "replanning_acceptance_fixture": {
+    "id": "exclude-glue-and-replan",
+    "data_kind": "controlled_acceptance_fixture_not_live_model_output",
+    "disclosure": "仅用于可重复的界面与校验验收，不替代真实 API 验证。常规演示方案本来就不需要胶水；本夹具单独构造胶粘款作为测试起点，不混入常规推荐。",
+    "confirmed_resource_source": "objects.confirmed_resources",
+    "initial_constraints": { "only_existing": false, "max_extra_consumable_types": 2, "excluded_materials": [] },
+    "initial_controlled_result": {
+      "name": "胶粘固定收纳款（仅验收夹具）",
+      "owned_allocations": [{ "resource_id": "glass-jar", "quantity": 1, "unit": "个" }, { "resource_id": "shoe-box", "quantity": 1, "unit": "个" }, { "resource_id": "cotton-cloth", "quantity": 1, "unit": "块" }],
+      "extras": [{ "id": "glue", "name": "胶水", "required_quantity": 5, "unit": "ml", "availability": "needs_supplement_not_owned", "required_before_execution": true }],
+      "step_semantics": "这份测试结果依赖额外胶水完成胶粘固定；未取得胶水前不得标为可立即执行。"
+    },
+    "user_action": "对胶水点击“这项没有，换个办法”",
+    "request_expectations": ["将胶水加入排除列表。", "沿用已确认三件旧物的数量。", "旧胶粘结果失效，重规划完成前不能勾选其步骤为当前执行进度。"],
+    "controlled_success_reference": "objects.plans[id=entry-organizer]",
+    "success_expectations": ["新方案使用材料和额外补料均不含胶水；解释文字可以提及已排除胶水。", "步骤改为整块布平铺、盒壁容纳及罐体稳定摆放，不能只删除胶水标签却保留胶粘操作。", "本成功参考无需额外补料；仅占用 1 个罐、1 个盒和 1 块布，三件资源各剩余 0。", "一次替换旧方案、步骤及资源账本，不把新旧方案占用相加。"],
+    "allowed_alternative": "明确返回 cannot_plan，给出原因并保留用户输入；不得继续把旧胶粘结果标为成功。",
+    "live_api_check": "用真实请求另行验证排除项、步骤与账本一致，或明确 cannot_plan；不要求真实模型给出相同标题、措辞或唯一固定方案。"
+  },
+  "acceptance_cases": [
+    { "id": "fixed-source", "action": "加载固定晚餐样例", "expected": "图片、预填清单和结果都标注固定样例；不显示真实识别成功。" },
+    { "id": "quantity-confirm", "action": "从新图片进入确认页", "expected": "克数、油盐水、锅具及关键条件由用户确认，不能从图片继承成事实。" },
+    { "id": "conservation", "action": "展开晚餐资源清单", "expected": "每项菜单分配之和等于账本 allocated，且不大于 available；剩余非负。" },
+    { "id": "less-rice", "action": "把米改为 40g", "expected": "旧结果失效，提示无法满足原有两人份主食约定，不生成虚构补料。" },
+    { "id": "single-burner", "action": "把双灶改为单灶", "expected": "重新评估时间，不能保留原并行时间表作为已保证结果。" },
+    { "id": "exclusive-plans", "action": "选择收纳台后再切换拍照台", "expected": "切换选定方案并重算占用，不累计两个方案的材料使用。" },
+    { "id": "invalid-real-output", "action": "真实模型把未确认材料当作已有、已有用量超额、额外补料超出允许范围或结构非法", "expected": "不呈现为可执行成品；提示修正并保留输入。关闭只用已有时，允许最多两类明确标为需补充的额外消耗品，但不得把它们算成已拥有或隐瞒执行前提。" },
+    { "id": "exclude-and-replan", "action": "加载独立胶水验收夹具，对额外胶水点击这项没有并重规划", "expected": "胶水进入排除项，旧结果失效；成功时使用项不含胶水，步骤与账本同步改变，或明确 cannot_plan。该夹具不能代替真实 API 验证。" },
+    { "id": "network-failure", "action": "真实请求期间断网或超时", "expected": "结束等待、显示失败、保留输入；重试和显式切换固定样例均可用。" }
+  ]
+}
