@@ -5,7 +5,7 @@
 「就地取材」是一款生活资源再利用应用：拍下现有食材或闲置物品，确认清单后，得到一餐菜单或旧物改造方案。它把用量、步骤、制作顺序和缺料替代放在同一个流程里，帮助独居、合租用户减少重复采购与闲置浪费。
 
 - [GitHub 仓库](https://github.com/yqia03/trae_gp)
-- [GitHub Pages 静态演示入口](https://yqia03.github.io/trae_gp/)（发布状态见仓库 Actions）
+- [GitHub Pages 静态演示入口](https://yqia03.github.io/trae_gp/)（已上线，已实测加载菜单）
 - [项目说明与比赛展示稿](docs/PROJECT.md)
 
 > GitHub Pages 提供静态演示，使用页面内明确标记的固定样例。图片识别与实时生成需要 Next.js 服务端和 Gemini 密钥，请按下方步骤运行完整版本。静态站不保存或提供 API 密钥。
@@ -77,7 +77,7 @@ npm run build:pages
 
 ## 验证状态
 
-本地已完成 23 项回归测试及 Webpack 生产构建；已验证食材自动估量后的真实菜单生成，以及常备仓库增删、修改和刷新保存。GitHub Pages 的发布结果以仓库 Actions 与实际页面访问为准；云端实时 Gemini 服务未部署。
+本地已完成 23 项回归测试及 Webpack 生产构建；已验证食材自动估量后的真实菜单生成，以及常备仓库增删、修改和刷新保存。GitHub Pages 已上线，已在公网页面验证固定晚餐菜单加载；云端实时 Gemini 服务未部署。
 
 ## 项目结构与原始资料
 

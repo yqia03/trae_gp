@@ -57,7 +57,7 @@
 ## 五、作品展示
 
 - 源码：[GitHub · yqia03/trae_gp](https://github.com/yqia03/trae_gp)
-- 静态演示：[GitHub Pages 入口](https://yqia03.github.io/trae_gp/)（发布状态以仓库 Actions 和实际访问为准）
+- 静态演示：[GitHub Pages 入口](https://yqia03.github.io/trae_gp/)（已上线，已实测加载菜单）
 - 完整 AI 版：[本地运行说明](../README.md#立即运行完整-ai-版本)
 
 GitHub Pages 不能运行 Next.js 服务端 API。静态演示用于展示固定案例、界面交互和常备仓库；真实图片识别及实时方案生成应在配置密钥的完整版本中演示。
@@ -84,7 +84,7 @@ GitHub Pages 不能运行 Next.js 服务端 API。静态演示用于展示固定
 
 ## 六、完成情况与边界
 
-本地已通过 23 项回归测试和 Webpack 生产构建；已验证自动估量后真实菜单生成，以及常备食材仓库的增删、修改与刷新保存。静态发布状态以 GitHub Actions 和实际页面访问为准；云端实时 Gemini 服务未部署。
+本地已通过 23 项回归测试和 Webpack 生产构建；已验证自动估量后真实菜单生成，以及常备食材仓库的增删、修改与刷新保存。GitHub Pages 静态站已上线，已在公网验证固定晚餐菜单加载；云端实时 Gemini 服务未部署。
 
 本次 Demo 不包含账号、云端库存、购物、营养评分或碳排计算。它重点展示从已有资源到可执行方案的完整流程；不宣称未经测量的节约金额、减排比例或烹饪效果。
 
