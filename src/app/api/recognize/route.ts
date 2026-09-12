@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { callGemini, geminiConfigured } from "@/lib/gemini";
 import { RECOGNIZE_SYSTEM } from "@/lib/prompts";
 import { RECOGNIZE_SCHEMA } from "@/lib/jsonSchemas";
-import { Candidate, envelope, Mode, ModelPayload } from "@/lib/types";
+import { envelope, Mode } from "@/lib/types";
+import { recognitionEnvelope } from "@/lib/model-results";
 
 export const runtime = "nodejs";
 
@@ -68,38 +68,11 @@ export async function POST(req: Request) {
     return NextResponse.json(envelope(mode, { error: result.error }), { status: result.httpStatus });
   }
 
-  let parsed: unknown;
   try {
-    parsed = JSON.parse(result.outputText);
-  } catch {
-    return NextResponse.json(envelope(mode, { error: { code: "invalid_output", message: "模型返回格式无效，请重试。", retryable: true } }), { status: 502 });
+    return NextResponse.json(recognitionEnvelope(result.outputText, mode));
+  } catch (error) {
+    return NextResponse.json(envelope(mode, { error: {
+      code: "invalid_output", message: error instanceof Error ? error.message : "识别结果未通过校验，请重试。", retryable: true,
+    } }), { status: 502 });
   }
-  const payload = ModelPayload.safeParse(parsed);
-  if (!payload.success) {
-    return NextResponse.json(envelope(mode, { error: { code: "invalid_output", message: "模型返回结构无效，请重试。", retryable: true } }), { status: 502 });
-  }
-
-  let candidates: Candidate[] = [];
-  if (payload.data.data && typeof payload.data.data === "object") {
-    const c = z.object({ candidates: z.array(Candidate) }).safeParse(payload.data.data);
-    if (!c.success) {
-      return NextResponse.json(envelope(mode, { error: { code: "invalid_output", message: "识别结果未通过校验，请重试。", retryable: true } }), { status: 502 });
-    }
-    candidates = c.data.candidates;
-  }
-  const seen = new Set<string>();
-  candidates = candidates.filter((cand) => {
-    if (seen.has(cand.id)) return false;
-    seen.add(cand.id);
-    return true;
-  });
-
-  return NextResponse.json(
-    envelope(mode, {
-      status: payload.data.status,
-      warnings: payload.data.warnings,
-      questions: payload.data.questions,
-      data: { candidates } as never,
-    }),
-  );
 }

@@ -130,7 +130,7 @@ export interface ApiError {
 
 export interface Envelope<T> {
   schemaVersion: "1.0";
-  source: "gemini" | "demo";
+  source: "gemini" | "custom" | "demo";
   mode: Mode;
   status: "ready" | "needs_info" | "cannot_plan";
   warnings: string[];

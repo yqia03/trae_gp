@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle, Check, ChefHat, Copy, ImagePlus, Loader2, Package, Plus, RefreshCw, Sparkles, Trash2, X,
 } from "lucide-react";
-import type { Candidate, Envelope, Kind, MealData, Mode, Resource, ReuseData, Unit, Use } from "@/lib/types";
+import type { Candidate, Constraints, Envelope, Kind, MealData, Mode, Resource, ReuseData, Unit, Use } from "@/lib/types";
 import { defaultPantry, readPantry, writePantry, type PantryItem } from "@/lib/pantry";
 import { candidateToRow, rowToResource, type InventoryRow as Row } from "@/lib/inventory";
 import {
@@ -12,9 +12,29 @@ import {
   demoMealInventory, demoReuseConstraints, demoReuseEnvelope, demoReuseInventory,
 } from "@/lib/demo";
 
+import { callCustomAI, validateCustomAIConfig, type CustomAIConfig } from "@/lib/custom-ai";
+import { planEnvelope, recognitionEnvelope, type PlanInput } from "@/lib/model-results";
+import { RECOGNIZE_SYSTEM, PLAN_SYSTEM } from "@/lib/prompts";
+import { RECOGNIZE_SCHEMA, MEAL_PLAN_SCHEMA, REUSE_PLAN_SCHEMA } from "@/lib/jsonSchemas";
+
 const uid = () => Math.random().toString(36).slice(2, 10);
-const DEMO_ONLY = process.env.NEXT_PUBLIC_DEMO_ONLY === "true";
+const STATIC_HOST = process.env.NEXT_PUBLIC_DEMO_ONLY === "true";
 const ASSET_BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
+
+const initialAPIConfig = (): CustomAIConfig => ({
+  provider: "gemini", baseUrl: "https://generativelanguage.googleapis.com/v1beta", model: "gemini-3.8-flash", apiKey: "",
+});
+const sourceLabel = (source: Envelope<unknown>["source"]) => source === "demo" ? "固定演示样例" : source === "custom" ? "自定义 AI 实时生成" : "Gemini 实时生成";
+
+async function imageData(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1]);
+    reader.onerror = () => reject(new Error("无法读取图片，请重新选择。"));
+    reader.readAsDataURL(blob);
+  });
+}
 
 const KIND_LABEL: Record<Kind, string> = {
   ingredient: "食材", material: "材料", consumable: "耗材", tool: "工具",
@@ -53,6 +73,9 @@ function computeLedger(inventory: Resource[], uses: Use[]) {
 }
 
 export default function Home() {
+  const [apiDraft, setAPIDraft] = useState<CustomAIConfig>(initialAPIConfig);
+  const [customAPI, setCustomAPI] = useState<CustomAIConfig | null>(null);
+  const [apiStatus, setAPIStatus] = useState({ phase: "idle" as "idle" | "loading" | "success" | "error", message: "" });
   const [mode, setMode] = useState<Mode>("meal");
   const [image, setImage] = useState<ImageState | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
@@ -112,6 +135,43 @@ export default function Home() {
     setCheckedSteps(new Set());
   }, [bump, demoTag]);
 
+  const editAPI = (patch: Partial<CustomAIConfig>) => {
+    setAPIDraft((old) => ({ ...old, ...patch, ...(patch.baseUrl !== undefined || patch.provider !== undefined ? { apiKey: "" } : {}) }));
+    setCustomAPI(null);
+    setAPIStatus({ phase: "idle", message: "设置已修改，请重新启用接口。" });
+    seq.current++;
+    setRecognize({ phase: "idle" });
+    setPlan({ phase: "idle" });
+    markEdited();
+  };
+
+  const enableAPI = () => {
+    try {
+      setCustomAPI(validateCustomAIConfig(apiDraft));
+      setAPIStatus({ phase: "idle", message: "自定义接口已启用；可测试连接或直接识别、生成。" });
+      markEdited();
+    } catch (error) {
+      setAPIStatus({ phase: "error", message: error instanceof Error ? error.message : "接口设置无效。" });
+    }
+  };
+
+  const testAPI = async () => {
+    setAPIStatus({ phase: "loading", message: "正在测试连接…" });
+    try {
+      const config = validateCustomAIConfig(apiDraft);
+      const text = await callCustomAI(config, {
+        systemInstruction: '只输出 JSON 对象 {"ok":true}。', prompt: "测试结构化输出。",
+        schema: { type: "object", properties: { ok: { type: "boolean" } }, required: ["ok"] },
+      });
+      if (JSON.parse(text)?.ok !== true) throw new Error("接口有响应，但未按要求返回 JSON；请确认模型支持结构化输出。");
+      setCustomAPI(config);
+      setAPIStatus({ phase: "success", message: "连接成功，接口已启用。图片识别还需模型支持图片输入。" });
+      markEdited();
+    } catch (error) {
+      setAPIStatus({ phase: "error", message: error instanceof SyntaxError ? "接口有响应，但没有返回有效 JSON。" : error instanceof Error ? error.message : "连接测试失败。" });
+    }
+  };
+
   // ---------- 输入操作 ----------
   const onPickFile = async (f: File) => {
     setRecognize({ phase: "idle" });
@@ -130,24 +190,32 @@ export default function Home() {
   };
 
   const runRecognize = async () => {
-    if (DEMO_ONLY) {
-      setRecognize({ phase: "error", message: "当前为 GitHub Pages 静态演示版，请加载演示样例；真实图片识别需运行 README 中的服务端版本。" });
+    if (STATIC_HOST && !customAPI) {
+      setRecognize({ phase: "error", message: "请先在“AI 接口设置”中启用自己的接口，或加载固定样例。" });
       return;
     }
-    if (!imageBlob.current || recognize.phase === "loading") return;
+    if (!imageBlob.current || recognize.phase === "loading" || plan.phase === "loading" || apiStatus.phase === "loading") return;
     const mySeq = ++seq.current;
     setRecognize({ phase: "loading" });
     try {
-      const fd = new FormData();
-      fd.append("image", new File([imageBlob.current], "upload.jpg", { type: "image/jpeg" }));
-      fd.append("mode", mode);
-      const res = await fetch("/api/recognize", { method: "POST", body: fd });
-      const env = (await res.json()) as Envelope<{ candidates: Candidate[] }>;
-      if (mySeq !== seq.current) return; // 迟到响应不覆盖新输入
-      if (!res.ok || env.error) {
-        setRecognize({ phase: "error", message: env.error?.message ?? "识别失败，请重试。" });
-        return;
+      let env: Envelope<{ candidates: Candidate[] }>;
+      if (customAPI) {
+        const output = await callCustomAI(customAPI, {
+          systemInstruction: RECOGNIZE_SYSTEM,
+          prompt: `mode=${mode}。请识别图片中的${mode === "meal" ? "食材" : "闲置物品与相关材料"}候选。`,
+          schema: RECOGNIZE_SCHEMA,
+          image: { mimeType: "image/jpeg", data: await imageData(imageBlob.current) },
+        });
+        env = recognitionEnvelope(output, mode, "custom");
+      } else {
+        const fd = new FormData();
+        fd.append("image", new File([imageBlob.current], "upload.jpg", { type: "image/jpeg" }));
+        fd.append("mode", mode);
+        const res = await fetch("/api/recognize", { method: "POST", body: fd });
+        env = (await res.json()) as Envelope<{ candidates: Candidate[] }>;
+        if (!res.ok || env.error) throw new Error(env.error?.message ?? "识别失败，请重试。");
       }
+      if (mySeq !== seq.current) return;
       const list = env.data?.candidates ?? [];
       setRows(list.map((c) => candidateToRow(c, mode)));
       setQuestions(env.questions);
@@ -157,9 +225,9 @@ export default function Home() {
         setRecognize({ phase: "error", message: "未能识别出可靠候选，可换清晰图片或直接手动输入。" });
       }
       markEdited();
-    } catch {
+    } catch (error) {
       if (mySeq !== seq.current) return;
-      setRecognize({ phase: "error", message: "网络异常，识别未完成。输入已保留，可重试。" });
+      setRecognize({ phase: "error", message: error instanceof Error ? error.message : "网络异常，识别未完成。输入已保留，可重试。" });
     }
   };
 
@@ -200,11 +268,11 @@ export default function Home() {
   };
 
   const runPlan = async (excluded: string[] = excludedExtras) => {
-    if (DEMO_ONLY) {
-      setPlan({ phase: "error", message: "当前为 GitHub Pages 静态演示版，请加载固定样例体验；自由生成需运行 README 中的服务端版本。", retryable: false });
+    if (STATIC_HOST && !customAPI) {
+      setPlan({ phase: "error", message: "请先在“AI 接口设置”中启用自己的接口，即可使用真实 AI 生成。", retryable: false });
       return;
     }
-    if (plan.phase === "loading") return;
+    if (plan.phase === "loading" || recognize.phase === "loading" || apiStatus.phase === "loading") return;
     const inventory = buildInventory();
     if (!inventory || inventory.filter((r) => r.kind !== "tool").length === 0) {
       setPlan({ phase: "error", message: "请为每项资源填写正数数量（按个需为整数）后再生成。", retryable: false });
@@ -215,30 +283,30 @@ export default function Home() {
     setPlan({ phase: "loading" });
     setQuestions([]);
     try {
-      const res = await fetch("/api/plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode,
-          inventory,
-          inventoryConfirmed: true,
-          constraints: {
-            people: mode === "meal" ? Math.max(1, parseInt(people) || 2) : undefined,
-            maxMinutes: Math.max(1, parseInt(maxMinutes) || 30),
-            dietaryAvoidances: avoidances.split(/[,，、\s]+/).filter(Boolean),
-            preferences: preferences.split(/[,，、\s]+/).filter(Boolean),
-            maxExtras: onlyExisting ? 0 : 8,
-            equipmentNotes: mode === "meal" ? [`炉头数量:${burners}`] : [],
-          },
-          excludedExtras: excluded,
-        }),
-      });
-      const env = (await res.json()) as Envelope<MealData | ReuseData>;
-      if (mySeq !== seq.current) return;
-      if (!res.ok || env.error) {
-        setPlan({ phase: "error", message: env.error?.message ?? "生成失败，请重试。", retryable: env.error?.retryable });
-        return;
+      const constraints: Constraints = {
+        people: mode === "meal" ? Math.max(1, parseInt(people) || 2) : undefined,
+        maxMinutes: Math.max(1, parseInt(maxMinutes) || 30),
+        dietaryAvoidances: avoidances.split(/[,，、\s]+/).filter(Boolean),
+        preferences: preferences.split(/[,，、\s]+/).filter(Boolean),
+        maxExtras: onlyExisting ? 0 : 8,
+        equipmentNotes: mode === "meal" ? [`炉头数量:${burners}`] : [],
+      };
+      const request: PlanInput = { mode, inventory, inventoryConfirmed: true, constraints, excludedExtras: excluded };
+      let env: Envelope<MealData | ReuseData>;
+      if (customAPI) {
+        const output = await callCustomAI(customAPI, {
+          systemInstruction: PLAN_SYSTEM, prompt: JSON.stringify(request),
+          schema: mode === "meal" ? MEAL_PLAN_SCHEMA : REUSE_PLAN_SCHEMA,
+        });
+        env = planEnvelope(output, request, "custom");
+      } else {
+        const res = await fetch("/api/plan", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request),
+        });
+        env = (await res.json()) as Envelope<MealData | ReuseData>;
+        if (!res.ok || env.error) throw new Error(env.error?.message ?? "生成失败，请重试。");
       }
+      if (mySeq !== seq.current) return;
       if (env.status === "needs_info") {
         setQuestions(env.questions);
         setPlan({ phase: "error", message: "还缺一些信息：请补充后重新生成。", retryable: true });
@@ -254,9 +322,9 @@ export default function Home() {
       setPlan({ phase: "idle" });
       if (demoTag) setDemoEdited(false);
       setDemoTag(null);
-    } catch {
+    } catch (error) {
       if (mySeq !== seq.current) return;
-      setPlan({ phase: "error", message: "网络异常，生成未完成。输入已保留，可重试。", retryable: true });
+      setPlan({ phase: "error", message: error instanceof Error ? error.message : "网络异常，生成未完成。输入已保留，可重试。", retryable: true });
     }
   };
 
@@ -330,7 +398,7 @@ export default function Home() {
 
   const copyPlan = async () => {
     if (!result) return;
-    const src = result.envelope.source === "demo" ? "固定演示样例" : "Gemini 实时生成";
+    const src = sourceLabel(result.envelope.source);
     const lines: string[] = [`【就地取材】来源:${src}`, `输入:${rows.map((r) => `${r.name}${r.quantitySource ? "约" : ""}${r.quantity}${UNIT_LABEL[r.unit]}`).join("、")}`];
     if (rows.some((r) => r.quantitySource)) lines.push("部分用量为估算，资源余量也按估算计算，可按实际份量调整。");
     if (mealData) {
@@ -362,7 +430,7 @@ export default function Home() {
   // ---------- 渲染 ----------
   return (
     <div className="min-h-screen">
-      {DEMO_ONLY && <div className="px-6 py-3 bg-surface text-sm text-accenttext">GitHub Pages 在线演示 · 请点击“加载演示样例”体验菜单与旧物方案。真实 AI 识别与生成需服务端运行；常备仓库可直接增删并保存。</div>}
+      {STATIC_HOST && <div className="px-6 py-3 bg-surface text-sm text-accenttext">GitHub Pages 在线版 · 配置自己的 AI 接口即可真实识别和生成；也可加载固定样例体验。</div>}
       {/* 顶栏 */}
       <header className="flex items-center justify-between px-6 h-16 border-b border-line">
         <div className="flex items-baseline gap-3">
@@ -410,9 +478,37 @@ export default function Home() {
       <main className="px-6 py-6 grid grid-cols-1 lg:grid-cols-[38%_1fr] gap-6">
         {/* 左:输入 */}
         <section className="space-y-4">
+          <details open={STATIC_HOST} className="bg-surface rounded-[20px] p-4">
+            <summary className="cursor-pointer min-h-11 text-lg font-semibold">AI 接口设置</summary>
+            <p className="text-sm text-secondary mt-1">{customAPI ? `已启用：${new URL(customAPI.baseUrl).host} · ${customAPI.model}` : STATIC_HOST ? "填写自己的接口和密钥，即可在本页使用真实 AI。" : "当前使用默认 Gemini 服务端；也可启用自己的接口。"}</p>
+            <fieldset disabled={apiStatus.phase === "loading" || recognize.phase === "loading" || plan.phase === "loading"} className="space-y-3 mt-3 disabled:opacity-60">
+              <label className="block text-sm text-secondary">接口类型
+                <select aria-label="接口类型" value={apiDraft.provider} onChange={(e) => editAPI(e.target.value === "gemini" ? initialAPIConfig() : { provider: "openai-compatible", baseUrl: "https://api.openai.com/v1", model: "", apiKey: "" })} className="block mt-1 w-full min-h-11 bg-surface2 border border-borderctl rounded-lg px-3 text-cream">
+                  <option value="gemini">Gemini 原生接口</option>
+                  <option value="openai-compatible">OpenAI 兼容接口</option>
+                </select>
+              </label>
+              <label className="block text-sm text-secondary">API 地址
+                <input aria-label="API 地址" type="url" autoComplete="off" spellCheck={false} value={apiDraft.baseUrl} onChange={(e) => editAPI({ baseUrl: e.target.value })} className="block mt-1 w-full min-h-11 bg-transparent border border-borderctl rounded-lg px-3 text-cream" />
+              </label>
+              <label className="block text-sm text-secondary">模型名称
+                <input aria-label="模型名称" autoComplete="off" spellCheck={false} value={apiDraft.model} onChange={(e) => editAPI({ model: e.target.value })} placeholder="填写服务商提供的模型名称" className="block mt-1 w-full min-h-11 bg-transparent border border-borderctl rounded-lg px-3 text-cream" />
+              </label>
+              <label className="block text-sm text-secondary">API Key
+                <input aria-label="API Key" type="password" autoComplete="off" spellCheck={false} value={apiDraft.apiKey} onChange={(e) => editAPI({ apiKey: e.target.value })} placeholder="仅在当前页面使用，刷新后清除" className="block mt-1 w-full min-h-11 bg-transparent border border-borderctl rounded-lg px-3 text-cream" />
+              </label>
+              <p className="text-xs text-secondary">密钥仅存于当前页面内存。图片、输入和密钥将直接发送到你填写的接口，请使用你信任的 HTTPS 地址。接口需允许浏览器跨域访问（CORS）；图片识别需模型支持图片输入。</p>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={enableAPI} className="min-h-11 px-4 rounded-full bg-cream text-canvas font-semibold">启用自定义接口</button>
+                <button onClick={testAPI} className="min-h-11 px-4 rounded-full border border-borderctl text-sm text-secondary">{apiStatus.phase === "loading" ? "测试中…" : "测试连接"}</button>
+                <button onClick={() => { setAPIDraft(initialAPIConfig()); setCustomAPI(null); setAPIStatus({ phase: "idle", message: "已清除密钥并关闭自定义接口。" }); markEdited(); }} className="min-h-11 px-4 rounded-full border border-borderctl text-sm text-secondary">清除密钥并关闭</button>
+              </div>
+            </fieldset>
+            {apiStatus.message && <p role="status" className={`text-sm mt-2 ${apiStatus.phase === "error" ? "text-danger" : apiStatus.phase === "success" ? "text-success" : "text-secondary"}`}>{apiStatus.message}</p>}
+          </details>
           {/* 上传 */}
           <div className="bg-surface rounded-[20px] p-4">
-            <p className="text-sm text-secondary mb-2">图片将发送给 Google Gemini 识别，请避免上传敏感信息；本地不保存照片。也可以跳过图片直接手动输入。</p>
+            <p className="text-sm text-secondary mb-2">{customAPI ? `图片将发送到你配置的接口（${new URL(customAPI.baseUrl).host}）识别。` : STATIC_HOST ? "请先配置自己的 AI 接口，即可上传图片识别。" : "图片将发送给默认 Gemini 服务端识别。"}本地不保存照片，也可以直接手动输入。</p>
             <div className="flex items-start gap-3">
               {image ? (
                 <div className="relative">
@@ -428,7 +524,7 @@ export default function Home() {
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onPickFile(f); e.target.value = ""; }} />
             </div>
             {image && !image.demo && (
-              <button onClick={runRecognize} disabled={recognize.phase === "loading"} className="mt-3 min-h-11 px-5 rounded-full bg-cream text-canvas font-semibold disabled:opacity-50 flex items-center gap-2">
+              <button onClick={runRecognize} disabled={recognize.phase === "loading" || plan.phase === "loading" || apiStatus.phase === "loading"} className="mt-3 min-h-11 px-5 rounded-full bg-cream text-canvas font-semibold disabled:opacity-50 flex items-center gap-2">
                 {recognize.phase === "loading" ? <><Loader2 size={16} className="animate-spin" /> 识别中…</> : "识别图片"}
               </button>
             )}
@@ -551,7 +647,7 @@ export default function Home() {
               <input type="checkbox" checked={onlyExisting} onChange={(e) => { setOnlyExisting(e.target.checked); markEdited(); }} className="w-5 h-5 accent-[#DC5000]" />
               只用已有资源(关闭后最多补充 8 类常备消耗品,补齐前方案不可执行)
             </label>
-            <button onClick={() => runPlan()} disabled={plan.phase === "loading"} className="w-full min-h-11 rounded-full bg-cream text-canvas font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
+            <button onClick={() => runPlan()} disabled={plan.phase === "loading" || recognize.phase === "loading" || apiStatus.phase === "loading"} className="w-full min-h-11 rounded-full bg-cream text-canvas font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
               {plan.phase === "loading" ? <><Loader2 size={16} className="animate-spin" /> 生成中…</> : mode === "meal" ? "确认并生成今晚菜单" : "确认并生成改造方案"}
             </button>
             {plan.phase === "error" && (
@@ -599,7 +695,7 @@ export default function Home() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <h2 className="text-xl font-semibold">{mealData ? "今晚菜单" : "改造方案"}</h2>
                     <span className={`text-xs px-2 py-1 rounded-full border ${resultSource === "demo" ? "border-accenttext text-accenttext" : "border-success text-success"}`}>
-                      {resultSource === "demo" ? "固定演示样例" : "Gemini 实时生成"}
+                      {sourceLabel(resultSource ?? "demo")}
                     </span>
                     {excludedExtras.length > 0 && <span className="text-xs text-secondary">已排除:{excludedExtras.join("、")}</span>}
                   </div>
