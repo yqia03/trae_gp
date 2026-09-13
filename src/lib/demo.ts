@@ -1,4 +1,4 @@
-// 固定演示样例：由 assets/demo/scenarios.json 适配为 MODEL_CONTRACT 统一契约。
+// TRAE 比赛固定演示样例；原始准备数据与接口规格保留在 Git 历史中。
 // source=demo，不经过 Gemini；仅适用于本文件内的预置清单与约束。
 import type { Constraints, Envelope, MealData, Resource, ReuseData } from "./types";
 
